@@ -1,0 +1,302 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Test Management System</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: Arial, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        .container {
+            background: white;
+            padding: 2rem;
+            border-radius: 10px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.2);
+            max-width: 500px;
+            width: 90%;
+        }
+        h1 {
+            color: #2c3e50;
+            text-align: center;
+            margin-bottom: 1.5rem;
+        }
+        .status {
+            background: #f8f9fa;
+            padding: 1rem;
+            border-radius: 5px;
+            margin-bottom: 1.5rem;
+            border-left: 4px solid #28a745;
+        }
+        .btn {
+            padding: 12px 24px;
+            background: #007bff;
+            color: white;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 16px;
+            width: 100%;
+            margin: 5px 0;
+        }
+        .btn:hover { background: #0056b3; }
+        .btn-success { background: #28a745; }
+        .btn-success:hover { background: #1e7e34; }
+        .form-group { margin-bottom: 1rem; }
+        .form-group label { display: block; margin-bottom: 0.5rem; font-weight: bold; }
+        .form-group input {
+            width: 100%;
+            padding: 10px;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+            font-size: 16px;
+        }
+        .hidden { display: none; }
+        .tabs { display: flex; margin-bottom: 1rem; }
+        .tab {
+            flex: 1;
+            padding: 10px;
+            text-align: center;
+            background: #f8f9fa;
+            cursor: pointer;
+            border: 1px solid #ddd;
+        }
+        .tab.active {
+            background: #007bff;
+            color: white;
+        }
+    </style>
+</head>
+<body>
+<div class="container">
+    <h1>Test Management System</h1>
+
+    <div class="status">
+        <strong>Backend Status:</strong>
+        <span id="backend-status">Checking...</span>
+    </div>
+
+    <div class="tabs">
+        <div class="tab active" onclick="showTab('login')">Login</div>
+        <div class="tab" onclick="showTab('register')">Register</div>
+    </div>
+
+    <div id="login-form">
+        <form onsubmit="handleLogin(event)">
+            <div class="form-group">
+                <label>Email:</label>
+                <input type="email" id="login-email" required placeholder="admin@example.com">
+            </div>
+            <div class="form-group">
+                <label>Password:</label>
+                <input type="password" id="login-password" required placeholder="admin123">
+            </div>
+            <button type="submit" class="btn">Login</button>
+        </form>
+    </div>
+
+    <div id="register-form" class="hidden">
+        <form onsubmit="handleRegister(event)">
+            <div class="form-group">
+                <label>Name:</label>
+                <input type="text" id="register-name" required>
+            </div>
+            <div class="form-group">
+                <label>Email:</label>
+                <input type="email" id="register-email" required>
+            </div>
+            <div class="form-group">
+                <label>Password:</label>
+                <input type="password" id="register-password" required minlength="6">
+            </div>
+            <button type="submit" class="btn btn-success">Register</button>
+        </form>
+    </div>
+
+    <div style="margin-top: 1rem; text-align: center;">
+        <button class="btn" onclick="testBackend()">Test Backend Connection</button>
+        <button class="btn" onclick="createSampleData()">Create Sample Data</button>
+    </div>
+</div>
+
+<script>
+    // Check backend status on load
+    checkBackendStatus();
+
+    async function checkBackendStatus() {
+        try {
+            const response = await fetch('http://localhost:8080/health');
+            if (response.ok) {
+                document.getElementById('backend-status').innerHTML = '✅ Running';
+                document.getElementById('backend-status').style.color = 'green';
+            } else {
+                throw new Error('Backend not healthy');
+            }
+        } catch (error) {
+            document.getElementById('backend-status').innerHTML = '❌ Not responding';
+            document.getElementById('backend-status').style.color = 'red';
+        }
+    }
+
+    function showTab(tabName) {
+        document.querySelectorAll('.tab').forEach(tab => tab.classList.remove('active'));
+        document.querySelectorAll(`.tab`)[tabName === 'login' ? 0 : 1].classList.add('active');
+
+        document.getElementById('login-form').classList.toggle('hidden', tabName !== 'login');
+        document.getElementById('register-form').classList.toggle('hidden', tabName !== 'register');
+    }
+
+    async function handleLogin(e) {
+        e.preventDefault();
+        const email = document.getElementById('login-email').value;
+        const password = document.getElementById('login-password').value;
+
+        try {
+            const response = await fetch('http://localhost:8080/api/v1/auth/login', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ email, password })
+            });
+
+            const data = await response.json();
+
+            if (response.ok) {
+                localStorage.setItem('token', data.token);
+                alert('✅ Login successful!');
+                showDashboard();
+            } else {
+                alert('❌ Login failed: ' + (data.error || 'Unknown error'));
+            }
+        } catch (error) {
+            alert('❌ Error: ' + error.message);
+        }
+    }
+
+    async function handleRegister(e) {
+        e.preventDefault();
+        const name = document.getElementById('register-name').value;
+        const email = document.getElementById('register-email').value;
+        const password = document.getElementById('register-password').value;
+
+        try {
+            const response = await fetch('http://localhost:8080/api/v1/auth/register', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ name, email, password })
+            });
+
+            const data = await response.json();
+
+            if (response.ok) {
+                alert('✅ Registration successful! Please login.');
+                showTab('login');
+                // Pre-fill login form
+                document.getElementById('login-email').value = email;
+            } else {
+                alert('❌ Registration failed: ' + (data.error || 'Unknown error'));
+            }
+        } catch (error) {
+            alert('❌ Error: ' + error.message);
+        }
+    }
+
+    async function testBackend() {
+        try {
+            const response = await fetch('http://localhost:8080/health');
+            const data = await response.json();
+            alert(`Backend Response: ${JSON.stringify(data, null, 2)}`);
+        } catch (error) {
+            alert('❌ Cannot connect to backend: ' + error.message);
+        }
+    }
+
+    async function createSampleData() {
+        try {
+            // First register a user if not exists
+            const registerResponse = await fetch('http://localhost:8080/api/v1/auth/register', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    name: 'Test User',
+                    email: 'test@example.com',
+                    password: 'test123'
+                })
+            });
+
+            if (registerResponse.ok) {
+                alert('✅ Sample user created: test@example.com / test123');
+            } else {
+                // User might already exist, try login
+                const loginResponse = await fetch('http://localhost:8080/api/v1/auth/login', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        email: 'test@example.com',
+                        password: 'test123'
+                    })
+                });
+
+                if (loginResponse.ok) {
+                    alert('✅ Sample user already exists: test@example.com / test123');
+                }
+            }
+        } catch (error) {
+            alert('❌ Error creating sample data: ' + error.message);
+        }
+    }
+
+    function showDashboard() {
+        document.body.innerHTML = `
+                <div class="container">
+                    <h1>Welcome to TMS Dashboard</h1>
+                    <div class="status">
+                        <p>✅ Successfully logged in!</p>
+                        <p>Token stored in localStorage</p>
+                    </div>
+                    <div style="margin-top: 1rem;">
+                        <button class="btn" onclick="testAPI()">Test Protected API</button>
+                        <button class="btn" onclick="location.reload()">Logout</button>
+                    </div>
+                    <div id="api-result" style="margin-top: 1rem;"></div>
+                </div>
+            `;
+    }
+
+    async function testAPI() {
+        const token = localStorage.getItem('token');
+        if (!token) {
+            alert('No token found');
+            return;
+        }
+
+        try {
+            const response = await fetch('http://localhost:8080/api/v1/profile', {
+                headers: {
+                    'Authorization': `Bearer ${token}`
+                }
+            });
+
+            const data = await response.json();
+            document.getElementById('api-result').innerHTML = `
+                    <div class="status">
+                        <strong>API Response:</strong>
+                        <pre>${JSON.stringify(data, null, 2)}</pre>
+                    </div>
+                `;
+        } catch (error) {
+            document.getElementById('api-result').innerHTML = `
+                    <div class="status" style="border-left-color: #dc3545;">
+                        <strong>API Error:</strong> ${error.message}
+                    </div>
+                `;
+        }
+    }
+</script>
+</body>
+</html>
